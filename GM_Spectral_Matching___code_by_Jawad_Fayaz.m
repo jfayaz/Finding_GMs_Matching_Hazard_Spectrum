@@ -1,6 +1,7 @@
 clear ; close all; clc; 
 %% ====================== SPECTRAL MATCHING ============================ %%
 %  author : JAWAD FAYAZ (email: jfayaz@uci.edu)
+%  visit: (https://jfayaz.github.io)
 
 %  ------------- Instructions -------------- %
 %  Given the Time Histories, Spectra (RotD50, RotD100, etc) and dt of the Bi-Directional GMs 
