@@ -2,71 +2,85 @@ clear ; close all; clc;
 %% ====================== SPECTRAL MATCHING ============================ %%
 %  author : JAWAD FAYAZ (email: jfayaz@uci.edu)
 %  visit: (https://jfayaz.github.io)
-
+%
 %  ------------- Instructions -------------- %
-%  Given the Time Histories, Spectra (RotD50, RotD100, etc) and dt of the Bi-Directional GMs 
-%  and the Hazard Spectrum (UHS, CMS, etc) of the location, this code finds
-%  the requried number of Time Histories whose Spectrum matches closest to 
-%  the Hazard Spectrum
+%  Given the Time Histories, Spectra (RotD50, RotD100, etc) and dt of Bi-Directional GMs or using the NGAWest2 Database, 
+%  this code utilizes the user-provided target Hazard Spectrum (UHS, CMS, etc) to find the requried number of Time Histories 
+%  whose spectra matches closest to the target Hazard Spectrum
 %  
-%  INPUT:
-%  Input Variables must be in the form of .mat file and must be in same directory
-%  Input Variables of the .mat file should include:
-%  "acc_1"     -->  Cell Structure (1,n) with each cell of Matrix (1,m), where 'n' is the no. of gms and 'm' is the length of gm time-history in direction-1 (any component of the bi-directional gm can be direction-1) {Contains GM Time-History}
-%  "acc_2"     -->  Cell Structure (1,n) with each cell of Matrix (1,m), where 'n' is the no. of gms and 'm' is the length of gm time-history in direction-2 (other component of the bi-directional gm) {Contains GM Time-History}
-%  "dt"        -->  Cell Structure (1,n) with each cell of Matrix (1,1) consisting of the dt of Time-History 
-%  "GM_Spectra"-->  Cell Structure (1,n) with each cell of Matrix (o,2), where 'n' is the no. of gms and 'o' is the length of spectra {Contains GM Spectra}
-% 
-%  Other INPUTs consist of the following which are required to be entered below:
-%  "GM_Data_Filename" --> .mat file containing 'acc_1', 'acc_2', 'dt' and 'GM_Spectra' cell structures (as mentioned above)
-%  "file" --> File containing the Hazard Spectrum to match
-%  "sheet" --> Sheet name of the file containing the Hazard Spectrum to match
-%  "range" --> Excel Cell Range of the sheet containing the Hazard Spectrum to match
-%  "Reqd_No_of_GMs" --> Required No. of GMs for that match the spectra (if you want to match all type the total number of gms available in the 'GM_Data.mat' file)
+%  INPUTS:
+%  "file" --> File containing the Hazard Spectrum to match (example is provided in "CMS.xlsx")
+%  "sheet" --> Sheet name of the file containing the Hazard Spectrum to match (example is provided in "CMS.xlsx")
+%  "Reqd_No_of_GMs" --> Required No. of GMs for that match the spectra (if you want to match all type the total number of gms available in the 'GM_Data.mat' or 'NGASpec.mat' file)
 %  "Error_Type" --> '1' for 'Absolute Difference' ; '2' for 'Squared Difference; '3' for 'Cubic Difference' : For calculating error between Target and GM Spectrum 
 %  "Periods_to_Match_Spectra" --> Periods to Match the GM Spectra with Hazard Spectrum
 %  "Allowable_Scaling_Factors" --> Scaling factors for scaling Ground Motion Spectrum
-%  "Plot_Selected_GM_Histories" --> whether to plot Time-Histories of selected scaled Ground Motions (options: 'Yes','No')
 %
-%  Example Input data is given in the .mat files "GM_DATA.mat" and the "CMS.xlsx"
+%  "NGAData_or_UserData" --> This specifies whether the user wants to specify their own data with accelerations or utilize NGAWest2 database (options: 'User','NGA')
+    %  If the user specifies 'User' as the option for the "NGAData_or_UserData" variable, then they need to provide a .mat file in the same directory
+        %  The name of the .mat file must be gven to the variable "GM_Data_Filename" and the file must contain:
+        %  "acc_1"     -->  Cell Structure (1,n) with each cell of Matrix (1,m), where 'n' is the no. of gms and 'm' is the length of gm time-history in direction-1 (any component of the bi-directional gm can be direction-1) {Contains GM Time-History}
+        %  "acc_2"     -->  Cell Structure (1,n) with each cell of Matrix (1,m), where 'n' is the no. of gms and 'm' is the length of gm time-history in direction-2 (other component of the bi-directional gm) {Contains GM Time-History}
+        %  "dt"        -->  Cell Structure (1,n) with each cell of Matrix (1,1) consisting of the dt of Time-History 
+        %  "GM_Spectra"-->  Cell Structure (1,n) with each cell of Matrix (o,2), where 'n' is the no. of gms and 'o' is the length of spectra {Contains GM Spectra}
+        % %  Example Input data is given in the .mat files "GM_DATA.mat"
+        %  With this option the user also needs to specify their preference for:
+        %  "Plot_Selected_GM_Histories" --> whether to plot Time-Histories of selected scaled Ground Motions (options: 'Yes','No')
+%    
+    %  If the user specifies 'NGA' as the option for the "NGAData_or_UserData" variable, then the code will utilize the provided GMSpec file from the same directory
 %
 %
 %  OUTPUT:
-%  Output ground motions will be provided in in two folders 'UNSCALED_GMS'
-%  and 'SCALED_GMS' . After the matching is conducted by scaling the
-%  GM spectra, the corresponding ground motion of the best spectral match
-%  will be provided in the 'SCALED_GMS' folder and the corresponding scaled
-%  version of the ground motion will be provided in the 'UNSCALED_GMS'
-%  folder with the best match scale factor.
-%  Also the details of the match will be provided in the Excel file: 'GM_Results.xlsx'
-%  
-%  The workspace output will be generated in the following variables:
-%  "GM_1" & "GM_2" --> Corresponding Scaled Ground Motions of the best spectral match in directions 1 and 2
-%  "GM_1_Unscaled" & "GM_2_Unscaled" --> Corresponding Unscaled Ground Motions of the best spectral match in directions 1 and 2
-
-
+%  If the user specifies 'User' as the option for the "NGAData_or_UserData" variable, the the following outputs will be provided: 
+        %  Output ground motions will be provided in in two folders 'UNSCALED_GMS'
+        %  and 'SCALED_GMS' . After the matching is conducted by scaling the
+        %  GM spectra, the corresponding ground motion of the best spectral match
+        %  will be provided in the 'SCALED_GMS' folder and the corresponding scaled
+        %  version of the ground motion will be provided in the 'UNSCALED_GMS'
+        %  folder with the best match scale factor.
+        %  Also the metadata of the match will be provided in the Excel file: 'GM_Results.xlsx'
+        %  
+        %  The workspace output will be generated in the following variables:
+        %  "GM_1" & "GM_2" --> Corresponding Scaled Ground Motions of the best spectral match in directions 1 and 2
+        %  "GM_1_Unscaled" & "GM_2_Unscaled" --> Corresponding Unscaled Ground Motions of the best spectral match in directions 1 and 2
+%        
+%  If the user specifies 'NGA' as the option for the "NGAData_or_UserData" variable, the the following outputs will be provided:
+        % Metadata including RSN, EQID, Mw, Rrup, and Vs30 will be provided in the Excel file: 'GM_Results.xlsx'
+        % The Excel file: 'GM_Results.xlsx' will also contain the Scaled and Unscaled spectra of the selcted ground motions
+        % The user can the use the RSNs to download the GMs from PEER Database
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ========================= USER INPUTS =============================== %%
 
-GM_Data_Filename = 'GM_DATA.mat';               % .mat file containing 'acc_1', 'acc_2', 'dt' and 'GM_Spectra' cell structures (as mentioned above)
 file             = 'CMS.xlsx';                  % File containing the Hazard Spectrum to match
 sheet            = 'Sheet1';                    % Sheet name of the file containing the Hazard Spectrum to match
-range            = 'A2:E100';                   % Excel Cell Range of the sheet containing the Hazard Spectrum to match
 Reqd_No_of_GMs   = 2;                           % Required No. of GMs for that match the spectra (if you want to match all type the total number of gms available in the 'GM_Data.mat' file)
 Error_Type       = 2;                           % '1' for 'Absolute Difference' ; '2' for 'Squared Difference; '3' for 'Cubic Difference' : For calculating error between Target and GM Spectrum 
-Periods_to_Match_Spectra  = 0.1:0.1:2.0;        % Periods to Match the GM Spectra with Hazard Spectrum
-Allowable_Scaling_Factors = 0.2:0.2:10;         % Scaling factors for scaling Ground Motion Spectrum
-Plot_Selected_GM_Histories= 'Yes';              % Plot Time-Histories of selected scaled Ground Motions (options: 'Yes','No')
+Periods_to_Match_Spectra  = 0.5:0.1:2.5;        % Periods to Match the GM Spectra with Hazard Spectrum
+Allowable_Scaling_Factors = 0.1:1:20;           % Scaling factors for scaling Ground Motion Spectrum
+
+NGAData_or_UserData = 'NGA';                    % 'NGA' for using NGAWest2 Database Spectra and obtaining RSNs; or 'User' for providing your own data file as described in the instructions
+% Note: the following two variables ('GM_Data_Filename' & 'Plot_Selected_GM_Histories') are only needed if you entered 'User' for NGAData_or_UserData variable
+GM_Data_Filename           = 'GM_DATA.mat';     % .mat file containing 'acc_1', 'acc_2', 'dt' and 'GM_Spectra' cell structures (as mentioned above)
+Plot_Selected_GM_Histories = 'Yes';             % Plot Time-Histories of selected scaled Ground Motions (options: 'Yes','No')
 
 %%%%%%================= END OF USER INPUT ========================%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% --------------- CALLING FUNCTIONS ----------------
+if strcmpi(NGAData_or_UserData,'User') == 1
+    db_switch = 0;
+    load(GM_Data_Filename)
+else
+    db_switch = 1;
+    load('NGASpec.mat')
+    NGAData = [RSN', EQID', Mw', Rrup', Vs30'];
+end
 
-load(GM_Data_Filename)
 if Reqd_No_of_GMs > length(GM_Spectra)
     fprintf('Reqd_No_of_GMs cannot be greater than number of ground motions provided in the "GM_Data.mat" file')
 end
 
-[Interpolated_Spectrum,User_Defined_Spectrum,GM_Spectra] = interpole_ars_spectrum(file,sheet,range,GM_Spectra,Periods_to_Match_Spectra);
+[Interpolated_Spectrum,User_Defined_Spectrum,GM_Spectra] = interpole_ars_spectrum(file,sheet,GM_Spectra,Periods_to_Match_Spectra);
 
 fprintf('Scaling and Checking Differences between Target and Ground Motion Spectrum...\n')
 [Stepped_Error_Rec,Error_Matrix] = diff_bw_GivenSpectrum_GMSpectrum(Periods_to_Match_Spectra,GM_Spectra,Interpolated_Spectrum,Allowable_Scaling_Factors,Error_Type);
@@ -74,20 +88,28 @@ fprintf('Scaling and Checking Differences between Target and Ground Motion Spect
     
 fprintf('Finding Match for the Target Spectra.....\n')
 [Selected_GMs_Data,Closest_Scaled_Spectra,Closest_Unscaled_Spectra,Sorted_Min_Error_for_Each_GM] = find_matching_spectras(Interpolated_Spectrum,User_Defined_Spectrum,Min_Error_for_Each_GM,Reqd_No_of_GMs,GM_Spectra);
-[GM_1_Unscaled, GM_1, GM_2_Unscaled, GM_2, Delta_T, NPTS] = derive_GMs_matching_spectra(Reqd_No_of_GMs,Selected_GMs_Data,acc_1,acc_2,dt,Plot_Selected_GM_Histories);
 
-fprintf('Writing Ground Motions to .AT2 files in the current directory.....\n')
-write_GMs_to_AT2(Selected_GMs_Data,Reqd_No_of_GMs,GM_1,GM_2,Delta_T,GM_1_Unscaled,GM_2_Unscaled);
+if db_switch == 0
+    [GM_1_Unscaled, GM_1, GM_2_Unscaled, GM_2, Delta_T, NPTS] = derive_GMs_matching_spectra(Reqd_No_of_GMs,Selected_GMs_Data,acc_1,acc_2,dt,Plot_Selected_GM_Histories);
 
-fprintf('Writing GM Spectra to XLSX File.....\n')
-[Selected_GMs_Data, Sorted_Min_Error_for_Each_GM] = write_spectra_to_excel(GM_Spectra,Reqd_No_of_GMs,Selected_GMs_Data,NPTS,Delta_T,Closest_Scaled_Spectra,Closest_Unscaled_Spectra,Sorted_Min_Error_for_Each_GM);
+    fprintf('Writing Ground Motions to .AT2 files in the current directory.....\n')
+    write_GMs_to_AT2(Selected_GMs_Data,Reqd_No_of_GMs,GM_1,GM_2,Delta_T,GM_1_Unscaled,GM_2_Unscaled);
     
+    fprintf('Writing GM Spectra to XLSX File.....\n')
+    [Selected_GMs_Data] = write_spectra_to_excel_user(GM_Spectra,Reqd_No_of_GMs,Selected_GMs_Data,NPTS,Delta_T,Closest_Scaled_Spectra,Closest_Unscaled_Spectra,Sorted_Min_Error_for_Each_GM);
+
+else
+    fprintf('Writing GM Spectra to XLSX File.....\n')
+    [Selected_GMs_Data, EQ_Data] = write_spectra_to_excel_nga(GM_Spectra,Reqd_No_of_GMs,Selected_GMs_Data,Closest_Scaled_Spectra,Closest_Unscaled_Spectra,Sorted_Min_Error_for_Each_GM,NGAData);
+
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% --------------- INTERPOLATION OF ARS SPECTRUM ---------------
-function [Interpolated_Spectrum,User_Defined_Spectrum,GM_Spectra] = interpole_ars_spectrum(file,sheet,range,GM_Spectra,Periods_to_Match_Spectra)
+function [Interpolated_Spectrum,User_Defined_Spectrum,GM_Spectra] = interpole_ars_spectrum(file,sheet,GM_Spectra,Periods_to_Match_Spectra)
     T                     = Periods_to_Match_Spectra ;
-    ars_data              = xlsread(file,sheet,range);
+    ars_data              = xlsread(file,sheet);
     User_Defined_Spectrum = [ars_data(:,1),ars_data(:,2)];
     Interpolated_Sa       = interp1(User_Defined_Spectrum(:,1),User_Defined_Spectrum(:,2),T');
     Interpolated_Spectrum = [T' ,  Interpolated_Sa];
@@ -112,8 +134,8 @@ end
 %% ----- Difference between Interpolated ARS Spectrum and Ground Motion Spectrum ----- %%
 function [Stepped_Error_Rec,Error_Matrix] = diff_bw_GivenSpectrum_GMSpectrum(Periods_to_Match_Spectra,GM_Spectra,Interpolated_Spectrum,Allowable_Scaling_Factors,Error_Type)
     T                   = Periods_to_Match_Spectra;
-    Area_ARS            = trapz(Interpolated_Spectrum(:,1), Interpolated_Spectrum(:,2)); %#ok<NASGU>
-    Area_Cum_ARS        = cumtrapz(Interpolated_Spectrum(:,1), Interpolated_Spectrum(:,2)); %#ok<NASGU>
+    Area_ARS            = trapz(Interpolated_Spectrum(:,1), Interpolated_Spectrum(:,2)); 
+    Area_Cum_ARS        = cumtrapz(Interpolated_Spectrum(:,1), Interpolated_Spectrum(:,2));
     Area_Stepped_ARS    = diff(Area_Cum_ARS);
 
     d = 0;
@@ -126,11 +148,10 @@ function [Stepped_Error_Rec,Error_Matrix] = diff_bw_GivenSpectrum_GMSpectrum(Per
             data         = GM_Spectra{gm};
             data_sf(:,1) = data(:,1);
             data_sf(:,2) = data(:,2).*Allowable_Scaling_Factors(sf); 
-            Matching_nos = interp1(data(:,1), data(:,1), T, 'nearest');
-            [~,idx]      = ismember(data(:,1),Matching_nos);
-            rows         = find(idx > 0);
-            Area_GM      = trapz(data_sf(rows,1), data_sf(rows,2)); %#ok<NASGU>
-            Area_Cum_GM  = cumtrapz (data_sf(rows,1), data_sf(rows,2));
+            data_int(:,1)= T;
+            data_int(:,2)= interp1(data_sf(:,1), data_sf(:,2), T);
+            Area_GM      = trapz(data_int(:,1), data_int(:,2)); 
+            Area_Cum_GM  = cumtrapz(data_int(:,1), data_int(:,2));
             Area__Stepped_GM            = diff(Area_Cum_GM);
             Stepped_Error               = (Area__Stepped_GM - Area_Stepped_ARS).^Error_Type;
             Stepped_Error_Rec{sf}{gm,1} = abs(Stepped_Error); %#ok<AGROW>
@@ -296,11 +317,11 @@ end
 
 
 %% --------------- Generating XLSX file --------------- %%
-function [Selected_GMs_Data, Sorted_Min_Error_for_Each_GM] = write_spectra_to_excel(GM_Spectra,Reqd_No_of_GMs,Selected_GMs_Data,NPTS,Delta_T,Closest_Scaled_Spectra,Closest_Unscaled_Spectra,Sorted_Min_Error_for_Each_GM)  
+function [Selected_GMs_Data, Sorted_Min_Error_for_Each_GM] = write_spectra_to_excel_user(GM_Spectra,Reqd_No_of_GMs,Selected_GMs_Data,NPTS,Delta_T,Closest_Scaled_Spectra,Closest_Unscaled_Spectra,Sorted_Min_Error_for_Each_GM)  
     writefile = 'GM_Results.xlsx';
     headings  =  strsplit([ 'GM_Name_X ', 'GM_Name_Y ', 'Ground_Motion_No ' , 'NPTS ', 'dt ' , 'Scale_Factor'],' ');
-    title1{1} = 'GROUND_MOTION_SCALED_SPECTRA_RotD50 (g)';
-    title2{1} = 'GROUND_MOTION_UNSCALED_SPECTRA_RotD50 (g)';
+    title1{1} = 'GM_Spectra_Scaled (g)';
+    title2{1} = 'GM_Spectra_Unscaled (g)';
     GM_Names_Array{1,1} = 'Tn (sec)';
 
     for m = 1:Reqd_No_of_GMs
@@ -309,12 +330,8 @@ function [Selected_GMs_Data, Sorted_Min_Error_for_Each_GM] = write_spectra_to_ex
         GM_Names_Array{m+1,1} = ['GM_',num2str(m)];
     end
 
-    write = [Selected_GMs_Data(:,1) , NPTS' , Delta_T' ,Selected_GMs_Data(:,2)]; 
-    xlswrite (writefile,headings,'A1:F1')
-    xlswrite (writefile,write, ['C2:F',num2str(2+size(write,1)-1)])
-    xlswrite (writefile,GM_Names,['A2:B',num2str(2+size(write,1)-1)])
-    xlswrite (writefile,title1,['A',num2str(7+size(write,1)-1),':A',num2str(7+size(write,1)-1)])
-    xlswrite (writefile,title2,['A',num2str(12 + 2*size(write,1)-1),':A',num2str(12 + 2*size(write,1)-1)])
+    write = [GM_Names, num2cell([Selected_GMs_Data(:,1) , NPTS' , Delta_T' ,Selected_GMs_Data(:,2)])]; 
+    xlswrite (writefile,[headings;write],'Metadata')
 
     TN = GM_Spectra{1}(:,1)';
     SCALE_spectrum(:,1)   = TN';
@@ -328,17 +345,50 @@ function [Selected_GMs_Data, Sorted_Min_Error_for_Each_GM] = write_spectra_to_ex
     end
 
     %%% Writing for Scaled Ground Motions
-    xlswrite (writefile,GM_Names_Array,['A',num2str(7+size(write,1)),':A',num2str(7+2*size(write,1))])
-    xlswrite (writefile,SCALE_spectrum',['B',num2str(7+size(write,1)),':BU',num2str(7+2*size(write,1))])
-
+    xlswrite (writefile,[GM_Names_Array, num2cell(SCALE_spectrum')],'SelectedGMs_ScaledSpectrum')
     %%% Writing for UnScaled Ground Motions
-    xlswrite (writefile,GM_Names_Array,['A',num2str(12+2*size(write,1)),':A',num2str(12+3*size(write,1))])
-    xlswrite (writefile,UNSCALE_spectrum',['B',num2str(12+2*size(write,1)),':BU',num2str(12+3*size(write,1))])
+    xlswrite (writefile,[GM_Names_Array, num2cell(UNSCALE_spectrum')],'SelectedGMs_UnscaledSpectrum')
 
-    Selected_GMs_Data = cell2struct(num2cell(Selected_GMs_Data),{'GM_No','Scale_Factor'},2);
-    Sorted_Min_Error_for_Each_GM = cell2struct(num2cell(Sorted_Min_Error_for_Each_GM),{'Error','GM_No','Scale_Factor'},2);
-
-    clearvars -except acc_2 acc_1 simulations_scenarios is_pulse dt Closest_Scaled_Spectra Delta_T Error_Matrix GM_1 GM_2 Interpolated_ARS_Spectrum NPTS Reqd_No_of_GMs Allowable_Scaling_Factors GM_Spectra Stepped_Error_Rec TN file sheet range Closest_Unscaled_Spectra GM_2_Unscaled GM_1_Unscaled Sorted_Min_Error_for_Each_GM Selected_GMs_Data T
+    Selected_GMs_Data = cell2struct(num2cell([Selected_GMs_Data, Sorted_Min_Error_for_Each_GM(Selected_GMs_Data(:,1),1)]),{'GM_No','Scale_Factor','Error'},2);
+    
+    clearvars -except Selected_GMs_Data EQ_Data NGAData Mw Rrup Vs30 EQID RSN acc_2 acc_1 simulations_scenarios is_pulse dt Closest_Scaled_Spectra Delta_T Error_Matrix GM_1 GM_2 Interpolated_ARS_Spectrum NPTS Reqd_No_of_GMs Allowable_Scaling_Factors GM_Spectra Stepped_Error_Rec TN file sheet range Closest_Unscaled_Spectra GM_2_Unscaled GM_1_Unscaled Sorted_Min_Error_for_Each_GM Selected_GMs_Data T
 end
-                    
+      
+function [Selected_GMs_Data, EQ_Data] = write_spectra_to_excel_nga(GM_Spectra,Reqd_No_of_GMs,Selected_GMs_Data,Closest_Scaled_Spectra,Closest_Unscaled_Spectra,Sorted_Min_Error_for_Each_GM,NGAData)  
+    writefile = 'GM_Results.xlsx';
+    headings  =  [{'GM'}, {'RSN'}, {'EQID'}, {'Mw'} , {'Rrup'}, {'Vs30'} , {'Scale_Factor'}];
+    title1{1} = 'GM_RotD50_Scaled (g)';
+    title2{1} = 'GM_RotD50_Unscaled (g)';
+    GM_Names_Array{1,1} = 'Tn (sec)';
+
+    for m = 1:Reqd_No_of_GMs
+        GM_Names{m,1} = ['GM1',num2str(m)];
+        GM_Names{m,2} = ['GM2',num2str(m)];
+        GM_Names_Array{m+1,1} = ['GM_',num2str(m)];
+    end
+
+    write = num2cell([NGAData(Selected_GMs_Data(:,1),:),Selected_GMs_Data(:,2)]); 
+    EQ_Data = [headings;[GM_Names_Array(2:end), write]];
+    xlswrite (writefile,EQ_Data,'Metadata')
+
+    TN = GM_Spectra{1}(:,1)';
+    SCALE_spectrum(:,1)   = TN';
+    UNSCALE_spectrum(:,1) = TN';
+    for n = 1:length(Closest_Scaled_Spectra)
+        sc_spctrm               =  cell2mat(struct2cell(Closest_Scaled_Spectra{n})');
+        un_sc_spctrm            =  cell2mat(struct2cell(Closest_Unscaled_Spectra{n})');
+        SCALE_spectrum(:,n+1)   = sc_spctrm (:,2);
+        UNSCALE_spectrum(:,n+1) = un_sc_spctrm (:,2);
+        clearvars un_sc_spctrm sc_spctrm
+    end
+
+    %%% Writing for Scaled Ground Motions
+    xlswrite (writefile,[GM_Names_Array, num2cell(SCALE_spectrum')],'SelectedGMs_ScaledSpectrum')
+    %%% Writing for UnScaled Ground Motions
+    xlswrite (writefile,[GM_Names_Array, num2cell(UNSCALE_spectrum')],'SelectedGMs_UnscaledSpectrum')
+     
+    Selected_GMs_Data          = cell2struct(num2cell([NGAData(Selected_GMs_Data(:,1),1),Selected_GMs_Data(:,2), Sorted_Min_Error_for_Each_GM(Selected_GMs_Data(:,1),1)]),{'RSN','Scale_Factor', 'Error'},2);
+    
+    clearvars -except Selected_GMs_Data EQ_Data NGAData Mw Rrup Vs30 EQID RSN acc_2 acc_1 simulations_scenarios is_pulse dt Closest_Scaled_Spectra Delta_T Error_Matrix GM_1 GM_2 Interpolated_ARS_Spectrum NPTS Reqd_No_of_GMs Allowable_Scaling_Factors GM_Spectra Stepped_Error_Rec TN file sheet range Closest_Unscaled_Spectra GM_2_Unscaled GM_1_Unscaled Sorted_Min_Error_for_Each_GM Selected_GMs_Data T
+end
  
